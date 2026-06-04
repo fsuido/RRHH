@@ -10,7 +10,8 @@ async function getEmpleados9Box() {
       FOTO,
       CARGO,
       PUNTAJE_DESEMPENO,
-      PUNTAJE_POTENCIAL
+      PUNTAJE_POTENCIAL,
+            AREA
     FROM rh_v_pruebajfv
   `);
 
@@ -36,11 +37,13 @@ async function getEmpleados9Box() {
       CC: row.CC,
       NOMBRE: row.NOMBRE,
       CARGO: row.CARGO,
+      
       FOTO: fotoBase64
         ? `data:image/jpeg;base64,${fotoBase64}`
         : null,
         PUNTAJE_DESEMPENO:row.PUNTAJE_DESEMPENO,
-      PUNTAJE_POTENCIAL:row.PUNTAJE_POTENCIAL
+      PUNTAJE_POTENCIAL:row.PUNTAJE_POTENCIAL,
+      AREA:  row.AREA
 
     });
   }

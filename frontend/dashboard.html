@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard — Gestión Humana</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0b0d14;
+  --surface:  #12151f;
+  --surface2: #181c2a;
+  --border:   rgba(255,255,255,0.07);
+  --text:     #dde1ef;
+  --muted:    #555d78;
+  --accent:   #7c6af7;
+
+  --alto:   #34d399;
+  --medio:  #fbbf24;
+  --bajo:   #f87171;
+
+  --c-estrella:  #818cf8;
+  --c-potencial: #34d399;
+  --c-enigma:    #e879f9;
+  --c-pilar:     #fbbf24;
+  --c-core:      #94a3b8;
+  --c-dilema:    #f87171;
+  --c-experto:   #fb923c;
+  --c-bajo:      #f97316;
+  --c-riesgo:    #ef4444;
+}
+
+html, body { height: 100%; font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); }
+
+body { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── HEADER ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo-badge {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--accent); display: flex; align-items: center;
+  justify-content: center; font-size: 0.75rem; font-weight: 700;
+  color: #fff; flex-shrink: 0;
+}
+.header-left h1 { font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
+.header-left p  { font-size: 0.6rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 1px; }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+.btn-back {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 6px 14px; border-radius: 8px;
+  font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 500;
+  cursor: pointer; text-decoration: none; transition: border-color 0.2s, background 0.2s;
+}
+.btn-back:hover { border-color: var(--accent); background: rgba(124,106,247,0.1); }
+.btn-back svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+.medicion-badge {
+  background: rgba(124,106,247,0.15); border: 1px solid rgba(124,106,247,0.3);
+  color: var(--accent); padding: 4px 10px; border-radius: 20px;
+  font-size: 0.68rem; font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── MAIN SCROLL AREA ── */
+main {
+  flex: 1; overflow-y: auto;
+  padding: 20px 24px 40px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+main::-webkit-scrollbar { width: 6px; }
+main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+/* ── PAGE TITLE ── */
+.page-title { display: flex; align-items: baseline; gap: 12px; flex-shrink: 0; }
+.page-title h2 { font-size: 1.5rem; font-weight: 700; color: #fff; letter-spacing: -0.03em; }
+.page-title span { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+
+/* ── FILTER BAR ── */
+.filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.filter-bar select {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); padding: 6px 12px; border-radius: 8px;
+  font-family: 'Syne', sans-serif; font-size: 0.75rem; cursor: pointer; outline: none;
+  transition: border-color 0.2s;
+}
+.filter-bar select:hover { border-color: var(--accent); }
+.filter-label { font-size: 0.68rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ── GRID LAYOUTS ── */
+.row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.row-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.row-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.card-title {
+  font-size: 0.78rem; font-weight: 600; color: var(--text);
+  letter-spacing: 0.01em; display: flex; align-items: center; gap: 8px;
+}
+.card-title .dot-accent {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+
+/* ── KPI CARDS ── */
+.kpi-value {
+  font-size: 2.6rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  color: #fff; line-height: 1; letter-spacing: -0.04em;
+}
+.kpi-sub { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+.kpi-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.kpi-bar-row { display: flex; align-items: center; gap: 8px; }
+.kpi-bar-label { font-size: 0.62rem; color: var(--muted); width: 80px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
+.kpi-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+.kpi-bar-fill  { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+.kpi-bar-val { font-size: 0.6rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); width: 32px; text-align: right; }
+
+/* ── 9-BOX MINI GRID ── */
+.ninebox-mini {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+}
+.nb-cell {
+  border-radius: 6px; padding: 5px 7px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: relative; overflow: hidden; min-height: 0;
+}
+.nb-cell::before {
+  content: ''; position: absolute; inset: 0;
+  background: var(--cell-color, #fff); opacity: 0.12;
+}
+.nb-name { font-size: 0.5rem; color: rgba(255,255,255,0.45); font-weight: 600; line-height: 1.2; z-index:1; position:relative; flex:1; }
+.nb-count { font-size: 0.95rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--cell-color, #fff); z-index:1; position:relative; line-height:1; flex-shrink:0; }
+
+/* ── COMPETENCIAS CHART ── */
+.comp-list { display: flex; flex-direction: column; gap: 10px; }
+.comp-row {}
+.comp-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.comp-name { font-size: 0.65rem; color: var(--text); }
+.comp-val  { font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+.comp-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+.comp-fill  { height: 100%; border-radius: 4px; transition: width 0.9s ease; }
+
+/* ── AREAS CRITICAS ── */
+.areas-list { display: flex; flex-direction: column; gap: 8px; }
+.area-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: var(--surface2);
+  border-radius: 8px; border: 1px solid var(--border);
+}
+.area-name { font-size: 0.72rem; font-weight: 500; }
+.area-pct  {
+  font-size: 0.68rem; font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; padding: 2px 8px; border-radius: 12px;
+}
+.area-pct.high { background: rgba(239,68,68,0.15); color: #f87171; }
+.area-pct.med  { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.area-pct.low  { background: rgba(52,211,153,0.15); color: #34d399; }
+
+/* ── CANVAS CHART ── */
+.chart-wrap { position: relative; height: 200px; }
+.chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+/* ── AI ANALYSIS ── */
+.ai-card {
+  background: linear-gradient(135deg, #181c2a 0%, #1a1632 100%);
+  border: 1px solid rgba(124,106,247,0.25);
+  border-radius: 14px; padding: 20px 22px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.ai-header { display: flex; align-items: center; gap: 10px; }
+.ai-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #7c6af7, #a78bfa);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(124,106,247,0.35);
+}
+.ai-title { font-size: 0.9rem; font-weight: 700; color: #fff; }
+.ai-sub   { font-size: 0.68rem; color: var(--muted); margin-top: 1px; }
+.ai-output {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; padding: 14px 16px; min-height: 100px;
+  font-size: 0.75rem; color: var(--muted); line-height: 1.7;
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+}
+.ai-output.has-content { align-items: flex-start; text-align: left; color: var(--text); }
+.ai-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.btn-generate {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #7c6af7, #6366f1);
+  color: #fff; border: none; padding: 9px 20px;
+  border-radius: 9px; font-family: 'Syne', sans-serif;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  box-shadow: 0 4px 20px rgba(124,106,247,0.4);
+}
+.btn-generate:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-generate:active { transform: translateY(0); }
+.btn-generate.loading { opacity: 0.6; cursor: not-allowed; }
+.btn-generate svg { width: 16px; height: 16px; flex-shrink: 0; }
+.ai-note { font-size: 0.62rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+/* ── SPINNER ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.spin { animation: spin 0.8s linear infinite; }
+.fadein { animation: fadeIn 0.35s ease forwards; }
+
+/* ── LOADING STATE ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px; height: 14px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ── DIVIDER LABEL ── */
+.section-label {
+  font-size: 0.6rem; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="logo-badge">9B</div>
+    <div>
+      <h1>Dashboard</h1>
+      <p>Gestión Humana · Evaluación de Talento</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="medicion-badge" id="medicion-badge">demo1</span>
+    <a href="index.html" class="btn-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Ver 9-Box Grid
+    </a>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main id="main">
+
+  <!-- Title + filters -->
+  <div class="page-title">
+    <h2>Análisis General</h2>
+    <span id="fecha-badge">—</span>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">Filtrar:</span>
+    <select id="filtro-area" onchange="onAreaChange()">
+      <option value="">Todas las áreas</option>
+    </select>
+    <select id="filtro-cargo" onchange="renderDashboard()">
+      <option value="">Todos los cargos</option>
+    </select>
+  </div>
+
+  <div class="section-label">Resumen general</div>
+
+  <!-- ROW 1: KPIs -->
+  <div class="row-3" id="row-kpis">
+    <!-- filled by JS -->
+  </div>
+
+  <div class="section-label">Distribución 9-Box</div>
+
+  <!-- ROW 2: 9-box mini + competencias + áreas críticas -->
+  <div class="row-3" id="row-ninebox">
+    <!-- filled by JS -->
+  </div>
+
+  <div class="section-label">Análisis por área</div>
+
+  <!-- ROW 3: charts -->
+  <div class="row-2" id="row-charts">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- AI ANALYSIS -->
+  <div class="section-label">Inteligencia artificial</div>
+  <div class="ai-card">
+    <div class="ai-header">
+      <div class="ai-icon">✦</div>
+      <div>
+        <div class="ai-title">Análisis con IA</div>
+        <div class="ai-sub">Genera un análisis ejecutivo basado en los datos de esta medición</div>
+      </div>
+    </div>
+    <div class="ai-output" id="ai-output">
+      El análisis aparecerá aquí una vez generado.
+    </div>
+    <div class="ai-footer">
+      <button class="btn-generate" id="btn-ia" onclick="generarAnalisis()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        Generar análisis
+      </button>
+      <span class="ai-note">Próximamente conectado a Claude AI</span>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ══════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════
+const API_URL  = "http://localhost:3000/api/9box";
+const USE_DEMO = false;
+
+const DEMO_EMPLEADOS = [
+  {CC:"001",NOMBRE:"Ana Torres",     CARGO:"Gerente",      AREA:"Área Comercial",              PUNTAJE_DESEMPENO:88, PUNTAJE_POTENCIAL:92, FOTO:""},
+  {CC:"002",NOMBRE:"Luis Ramírez",   CARGO:"Analista",     AREA:"Área Financiera y Administrativa", PUNTAJE_DESEMPENO:72, PUNTAJE_POTENCIAL:55, FOTO:""},
+  {CC:"003",NOMBRE:"Claudia Mora",   CARGO:"Coordinadora", AREA:"Área Comercial",              PUNTAJE_DESEMPENO:45, PUNTAJE_POTENCIAL:80, FOTO:""},
+  {CC:"004",NOMBRE:"Pedro Vega",     CARGO:"Técnico",      AREA:"Área Financiera y Administrativa", PUNTAJE_DESEMPENO:30, PUNTAJE_POTENCIAL:28, FOTO:""},
+  {CC:"005",NOMBRE:"Mariana Gil",    CARGO:"Directora",    AREA:"Área Comercial",              PUNTAJE_DESEMPENO:91, PUNTAJE_POTENCIAL:76, FOTO:""},
+  {CC:"006",NOMBRE:"Jorge Pinto",    CARGO:"Analista",     AREA:"Área Comercial",              PUNTAJE_DESEMPENO:55, PUNTAJE_POTENCIAL:50, FOTO:""},
+  {CC:"007",NOMBRE:"Sofía Castro",   CARGO:"Especialista", AREA:"Área Financiera y Administrativa", PUNTAJE_DESEMPENO:78, PUNTAJE_POTENCIAL:88, FOTO:""},
+  {CC:"008",NOMBRE:"Andrés Ríos",    CARGO:"Técnico",      AREA:"Área Comercial",              PUNTAJE_DESEMPENO:20, PUNTAJE_POTENCIAL:62, FOTO:""},
+  {CC:"009",NOMBRE:"Valentina Cruz", CARGO:"Coordinadora", AREA:"Área Comercial",              PUNTAJE_DESEMPENO:62, PUNTAJE_POTENCIAL:35, FOTO:""},
+  {CC:"010",NOMBRE:"Camilo Díaz",    CARGO:"Gerente",      AREA:"Área Financiera y Administrativa", PUNTAJE_DESEMPENO:84, PUNTAJE_POTENCIAL:60, FOTO:""},
+  {CC:"011",NOMBRE:"Natalia Ruiz",   CARGO:"Analista",     AREA:"Área Financiera y Administrativa", PUNTAJE_DESEMPENO:38, PUNTAJE_POTENCIAL:45, FOTO:""},
+  {CC:"012",NOMBRE:"Esteban Lara",   CARGO:"Director",     AREA:"Área Comercial",              PUNTAJE_DESEMPENO:94, PUNTAJE_POTENCIAL:95, FOTO:""},
+  {CC:"013",NOMBRE:"Isabel Vargas",  CARGO:"Especialista", AREA:"Área Comercial",              PUNTAJE_DESEMPENO:58, PUNTAJE_POTENCIAL:74, FOTO:""},
+  {CC:"014",NOMBRE:"Mauricio León",  CARGO:"Técnico",      AREA:"Área Financiera y Administrativa", PUNTAJE_DESEMPENO:15, PUNTAJE_POTENCIAL:18, FOTO:""},
+  {CC:"015",NOMBRE:"Paola Herrera",  CARGO:"Coordinadora", AREA:"Área Comercial",              PUNTAJE_DESEMPENO:70, PUNTAJE_POTENCIAL:70, FOTO:""},
+];
+
+const QUADRANT_META = [
+  { nombre:"Enigma",         color:"#e879f9", r:0, c:0 },
+  { nombre:"Potencial Alto", color:"#34d399", r:0, c:1 },
+  { nombre:"Estrella",       color:"#818cf8", r:0, c:2 },
+  { nombre:"Dilema",         color:"#f87171", r:1, c:0 },
+  { nombre:"Core",           color:"#94a3b8", r:1, c:1 },
+  { nombre:"Pilar",          color:"#fbbf24", r:1, c:2 },
+  { nombre:"En Riesgo",      color:"#ef4444", r:2, c:0 },
+  { nombre:"Bajo Desempeño", color:"#f97316", r:2, c:1 },
+  { nombre:"Experto",        color:"#fb923c", r:2, c:2 },
+];
+
+// Competencias fijas (ajustar según tu API)
+const COMPETENCIAS = [
+  "Orientación al logro",
+  "Orientación al cliente",
+  "Creatividad e Innovación",
+  "Análisis y Solución de Problemas",
+  "Desarrollo de Oportunidades de Negocio",
+];
+
+const COMP_COLORS = ["#7c6af7","#34d399","#fbbf24","#f87171","#38bdf8"];
+
+let todosEmpleados = [];
+let chartPromedios  = null;
+let chartDistrib    = null;
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+function clasificar(des, pot) {
+  const col  = des >= 67 ? 2 : des >= 34 ? 1 : 0;
+  const fila = pot >= 67 ? 0 : pot >= 34 ? 1 : 2;
+  return QUADRANT_META.find(q => q.r === fila && q.c === col);
+}
+
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+
+function filtrados() {
+  const area  = document.getElementById("filtro-area").value;
+  const cargo = document.getElementById("filtro-cargo").value;
+  return todosEmpleados.filter(e =>
+    (!area  || e.AREA  === area) &&
+    (!cargo || e.CARGO === cargo)
+  );
+}
+
+function areas() {
+  return [...new Set(todosEmpleados.map(e=>e.AREA).filter(Boolean))].sort();
+}
+
+// Fake competencias per employee (until API returns them)
+function fakeCompetencias(emp) {
+  const seed = emp.CC.charCodeAt(0);
+  return COMPETENCIAS.map((_, i) => {
+    const base = ((emp.PUNTAJE_DESEMPENO + emp.PUNTAJE_POTENCIAL) / 2) / 100 * 5;
+    const jitter = Math.sin(seed * (i+1) * 7.3) * 0.8;
+    return Math.min(5, Math.max(1, parseFloat((base + jitter).toFixed(2))));
+  });
+}
+
+function barColor(val, max=100) {
+  const pct = val/max;
+  if (pct >= 0.67) return "#34d399";
+  if (pct >= 0.34) return "#fbbf24";
+  return "#f87171";
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
+function renderDashboard() {
+  const list = filtrados();
+
+  renderKPIs(list);
+  renderNineBox(list);
+  renderCharts(list);
+}
+
+// ── KPI Row ──
+function renderKPIs(list) {
+  const container = document.getElementById("row-kpis");
+
+  const totalEval = list.length;
+  const avgDes    = avg(list.map(e=>e.PUNTAJE_DESEMPENO));
+  const avgPot    = avg(list.map(e=>e.PUNTAJE_POTENCIAL));
+
+  // Participation bars — by area if no area filter, by cargo if area is selected
+  const areaFiltro = document.getElementById("filtro-area").value;
+  const breakdownItems = areaFiltro
+    ? [...new Set(list.map(e=>e.CARGO).filter(Boolean))].sort()
+    : [...new Set(list.map(e=>e.AREA).filter(Boolean))].sort();
+  const breakdownKey = areaFiltro ? "CARGO" : "AREA";
+
+  const areaBarRows = breakdownItems.map(a => {
+    const count = list.filter(e=>e[breakdownKey]===a).length;
+    const pct   = totalEval ? (count/totalEval*100) : 0;
+    return `<div class="kpi-bar-row">
+      <span class="kpi-bar-label" title="${a}">${a}</span>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill fadein" style="width:${pct}%;background:#7c6af7"></div></div>
+      <span class="kpi-bar-val">${count}</span>
+    </div>`;
+  }).join("") || `<span style="font-size:0.62rem;color:var(--muted)">Sin datos</span>`;
+
+  // Desempeño by bucket
+  const desBars = [
+    { label:"Alto (≥67)",   count: list.filter(e=>e.PUNTAJE_DESEMPENO>=67).length, color:"#34d399" },
+    { label:"Medio (34-66)",count: list.filter(e=>e.PUNTAJE_DESEMPENO>=34&&e.PUNTAJE_DESEMPENO<67).length, color:"#fbbf24" },
+    { label:"Bajo (<34)",   count: list.filter(e=>e.PUNTAJE_DESEMPENO<34).length, color:"#f87171" },
+  ].map(b => {
+    const pct = totalEval ? (b.count/totalEval*100) : 0;
+    return `<div class="kpi-bar-row">
+      <span class="kpi-bar-label">${b.label}</span>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill fadein" style="width:${pct}%;background:${b.color}"></div></div>
+      <span class="kpi-bar-val">${b.count}</span>
+    </div>`;
+  }).join("");
+
+  const potBars = [
+    { label:"Alto (≥67)",   count: list.filter(e=>e.PUNTAJE_POTENCIAL>=67).length, color:"#34d399" },
+    { label:"Medio (34-66)",count: list.filter(e=>e.PUNTAJE_POTENCIAL>=34&&e.PUNTAJE_POTENCIAL<67).length, color:"#fbbf24" },
+    { label:"Bajo (<34)",   count: list.filter(e=>e.PUNTAJE_POTENCIAL<34).length, color:"#f87171" },
+  ].map(b => {
+    const pct = totalEval ? (b.count/totalEval*100) : 0;
+    return `<div class="kpi-bar-row">
+      <span class="kpi-bar-label">${b.label}</span>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill fadein" style="width:${pct}%;background:${b.color}"></div></div>
+      <span class="kpi-bar-val">${b.count}</span>
+    </div>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="card fadein">
+      <div class="card-title"><div class="dot-accent"></div>Participación</div>
+      <div class="kpi-value">${totalEval}</div>
+      <div class="kpi-sub">empleados evaluados</div>
+      <div class="kpi-bars">${areaBarRows}</div>
+    </div>
+    <div class="card fadein" style="animation-delay:0.05s">
+      <div class="card-title"><div class="dot-accent" style="background:#34d399"></div>Desempeño promedio</div>
+      <div class="kpi-value" style="color:${barColor(avgDes)}">${avgDes.toFixed(1)}<span style="font-size:1rem;color:var(--muted)">%</span></div>
+      <div class="kpi-sub">promedio general</div>
+      <div class="kpi-bars">${desBars}</div>
+    </div>
+    <div class="card fadein" style="animation-delay:0.1s">
+      <div class="card-title"><div class="dot-accent" style="background:#7c6af7"></div>Potencial promedio</div>
+      <div class="kpi-value" style="color:${barColor(avgPot)}">${avgPot.toFixed(1)}<span style="font-size:1rem;color:var(--muted)">%</span></div>
+      <div class="kpi-sub">promedio general</div>
+      <div class="kpi-bars">${potBars}</div>
+    </div>
+  `;
+}
+
+// ── 9-Box mini + competencias + áreas críticas ──
+function renderNineBox(list) {
+  const container = document.getElementById("row-ninebox");
+
+  // Count per quadrant
+  const counts = {};
+  QUADRANT_META.forEach(qm => { counts[qm.nombre] = 0; });
+  list.forEach(e => { const q = clasificar(e.PUNTAJE_DESEMPENO, e.PUNTAJE_POTENCIAL); counts[q.nombre]++; });
+
+  const cells = QUADRANT_META.map(qm => `
+    <div class="nb-cell" style="--cell-color:${qm.color};background:${qm.color}14">
+      <div class="nb-name">${qm.nombre}</div>
+      <div class="nb-count" style="color:${qm.color}">${counts[qm.nombre]}</div>
+    </div>
+  `).join("");
+
+  // Competencias promedio (simuladas)
+  const compAvgs = COMPETENCIAS.map((_, ci) => {
+    const vals = list.map(e => fakeCompetencias(e)[ci]);
+    return avg(vals);
+  });
+  const compMax = Math.max(...compAvgs, 5);
+
+  const compRows = COMPETENCIAS.map((c, i) => {
+    const pct = (compAvgs[i]/5)*100;
+    return `<div class="comp-row fadein" style="animation-delay:${0.05*i}s">
+      <div class="comp-header">
+        <span class="comp-name">${c}</span>
+        <span class="comp-val">${compAvgs[i].toFixed(2)} / 5.00</span>
+      </div>
+      <div class="comp-track">
+        <div class="comp-fill" style="width:${pct}%;background:${COMP_COLORS[i]}"></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Áreas críticas: % de personas en cuadrantes de riesgo — use filtered list
+  const riskNames = new Set(["En Riesgo","Dilema","Bajo Desempeño"]);
+  const areaListCrit = [...new Set(list.map(e=>e.AREA).filter(Boolean))].sort();
+  const areaRisks = areaListCrit.map(a => {
+    const emp  = list.filter(e=>e.AREA===a);
+    const risk = emp.filter(e=>riskNames.has(clasificar(e.PUNTAJE_DESEMPENO,e.PUNTAJE_POTENCIAL).nombre));
+    const pct  = emp.length ? Math.round(risk.length/emp.length*100) : 0;
+    return { a, pct };
+  }).sort((a,b)=>b.pct-a.pct);
+
+  const areaRows = areaRisks.map(({a, pct}) => {
+    const cls = pct>=20 ? "high" : pct>=10 ? "med" : "low";
+    return `<div class="area-row fadein">
+      <span class="area-name">${a}</span>
+      <span class="area-pct ${cls}">${pct}%</span>
+    </div>`;
+  }).join("") || `<div style="color:var(--muted);font-size:0.72rem;text-align:center;padding:12px">Sin datos</div>`;
+
+  container.innerHTML = `
+    <div class="card fadein">
+      <div class="card-title"><div class="dot-accent"></div>Distribución 9-Box</div>
+      <div class="ninebox-mini">${cells}</div>
+    </div>
+    <div class="card fadein" style="animation-delay:0.04s">
+      <div class="card-title"><div class="dot-accent" style="background:#fbbf24"></div>Competencias (promedio)</div>
+      <div class="comp-list">${compRows}</div>
+    </div>
+    <div class="card fadein" style="animation-delay:0.08s">
+      <div class="card-title"><div class="dot-accent" style="background:#f87171"></div>Áreas críticas <span style="font-size:0.6rem;color:var(--muted);margin-left:4px">% en riesgo</span></div>
+      <div class="areas-list">${areaRows}</div>
+    </div>
+  `;
+}
+
+// ── Charts ──
+function renderCharts(list) {
+  const container = document.getElementById("row-charts");
+  container.innerHTML = `
+    <div class="card fadein">
+      <div class="card-title"><div class="dot-accent" style="background:#34d399"></div>Promedios por área</div>
+      <div class="chart-wrap"><canvas id="chart-promedios"></canvas></div>
+    </div>
+    <div class="card fadein" style="animation-delay:0.06s">
+      <div class="card-title"><div class="dot-accent" style="background:#7c6af7"></div>Distribución de potencial por área</div>
+      <div class="chart-wrap"><canvas id="chart-distrib"></canvas></div>
+    </div>
+  `;
+
+  // Use only areas present in the filtered list
+  const areaList = [...new Set(list.map(e=>e.AREA).filter(Boolean))].sort();
+
+  Chart.defaults.font  = { family:"'JetBrains Mono', monospace", size:10 };
+  Chart.defaults.color = "#555d78";
+
+  // Chart 1: promedios des+pot — use filtered list
+  const desAvgs = areaList.map(a => avg(list.filter(e=>e.AREA===a).map(e=>e.PUNTAJE_DESEMPENO)));
+  const potAvgs = areaList.map(a => avg(list.filter(e=>e.AREA===a).map(e=>e.PUNTAJE_POTENCIAL)));
+
+  if (chartPromedios) chartPromedios.destroy();
+  chartPromedios = new Chart(document.getElementById("chart-promedios"), {
+    type: "bar",
+    data: {
+      labels: areaList,
+      datasets: [
+        { label:"Desempeño", data: desAvgs, backgroundColor:"rgba(124,106,247,0.75)", borderRadius:6, borderSkipped:false },
+        { label:"Potencial",  data: potAvgs, backgroundColor:"rgba(52,211,153,0.75)",  borderRadius:6, borderSkipped:false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:"#6b7280", boxWidth:10, font:{size:10} } } },
+      scales: {
+        x: { grid:{color:"rgba(255,255,255,0.04)"}, ticks:{color:"#6b7280", maxRotation:30} },
+        y: { min:0, max:100, grid:{color:"rgba(255,255,255,0.05)"}, ticks:{color:"#6b7280"} }
+      }
+    }
+  });
+
+  // Chart 2: distribución potencial — use filtered list
+  const altoData  = areaList.map(a => list.filter(e=>e.AREA===a&&e.PUNTAJE_POTENCIAL>=67).length);
+  const medioData = areaList.map(a => list.filter(e=>e.AREA===a&&e.PUNTAJE_POTENCIAL>=34&&e.PUNTAJE_POTENCIAL<67).length);
+  const bajoData  = areaList.map(a => list.filter(e=>e.AREA===a&&e.PUNTAJE_POTENCIAL<34).length);
+
+  if (chartDistrib) chartDistrib.destroy();
+  chartDistrib = new Chart(document.getElementById("chart-distrib"), {
+    type: "bar",
+    data: {
+      labels: areaList,
+      datasets: [
+        { label:"Alto",  data: altoData,  backgroundColor:"rgba(52,211,153,0.82)",  borderRadius:0, stack:"s" },
+        { label:"Medio", data: medioData, backgroundColor:"rgba(251,191,36,0.82)",  borderRadius:0, stack:"s" },
+        { label:"Bajo",  data: bajoData,  backgroundColor:"rgba(239,68,68,0.82)",   borderRadius:0, stack:"s" },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:"#6b7280", boxWidth:10, font:{size:10} } } },
+      scales: {
+        x: { stacked:true, grid:{color:"rgba(255,255,255,0.04)"}, ticks:{color:"#6b7280", maxRotation:30} },
+        y: { stacked:true, grid:{color:"rgba(255,255,255,0.05)"}, ticks:{color:"#6b7280"} }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+//  AI ANALYSIS (placeholder)
+// ══════════════════════════════════════════
+function generarAnalisis() {
+  const btn    = document.getElementById("btn-ia");
+  const output = document.getElementById("ai-output");
+  if (btn.classList.contains("loading")) return;
+
+  btn.classList.add("loading");
+  btn.innerHTML = `<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generando...`;
+
+  // Simulated delay — replace with real API call when ready
+  setTimeout(() => {
+    const list = filtrados();
+    const totalEval = list.length;
+    const avgDes = (list.reduce((a,e)=>a+e.PUNTAJE_DESEMPENO,0)/totalEval||0).toFixed(1);
+    const avgPot = (list.reduce((a,e)=>a+e.PUNTAJE_POTENCIAL,0)/totalEval||0).toFixed(1);
+    const estrellas = list.filter(e=>clasificar(e.PUNTAJE_DESEMPENO,e.PUNTAJE_POTENCIAL).nombre==="Estrella").length;
+    const enRiesgo  = list.filter(e=>["En Riesgo","Dilema","Bajo Desempeño"].includes(clasificar(e.PUNTAJE_DESEMPENO,e.PUNTAJE_POTENCIAL).nombre)).length;
+
+    output.classList.add("has-content","fadein");
+    output.textContent = `📊 Resumen ejecutivo: Se evaluaron ${totalEval} empleados con un desempeño promedio de ${avgDes}% y un potencial promedio de ${avgPot}%. El ${((estrellas/totalEval)*100).toFixed(0)}% corresponde a perfiles Estrella (alto desempeño + alto potencial), mientras que el ${((enRiesgo/totalEval)*100).toFixed(0)}% se encuentra en cuadrantes de riesgo que requieren atención prioritaria. Se recomienda diseñar planes de desarrollo individualizados para los perfiles de alto potencial y acciones correctivas inmediatas para los empleados en riesgo. [Este análisis es generado automáticamente como placeholder — conectar a Claude AI para análisis profundo]`;
+
+    btn.classList.remove("loading");
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Regenerar análisis`;
+  }, 2000);
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+// When area changes → repopulate cargo options then render
+function onAreaChange() {
+  const area  = document.getElementById("filtro-area").value;
+  const sc    = document.getElementById("filtro-cargo");
+  const prev  = sc.value;
+  // Keep only cargos present in selected area (or all if no area)
+  const source = area ? todosEmpleados.filter(e=>e.AREA===area) : todosEmpleados;
+  const cargos = [...new Set(source.map(e=>e.CARGO).filter(Boolean))].sort();
+  sc.innerHTML = `<option value="">Todos los cargos</option>`;
+  cargos.forEach(c => {
+    const o = document.createElement("option");
+    o.value = o.textContent = c;
+    if (c === prev) o.selected = true;
+    sc.appendChild(o);
+  });
+  renderDashboard();
+}
+
+async function init() {
+  try {
+    if (!USE_DEMO) {
+      const res  = await fetch(API_URL);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      todosEmpleados = Array.isArray(data) ? data : (data.empleados ?? data.data ?? []);
+      if (!todosEmpleados.length) throw new Error("Sin datos");
+    } else {
+      throw new Error("demo");
+    }
+  } catch {
+    todosEmpleados = DEMO_EMPLEADOS;
+  }
+
+  // Populate area + cargo filters
+  const sa = document.getElementById("filtro-area");
+  areas().forEach(a => { const o=document.createElement("option"); o.value=o.textContent=a; sa.appendChild(o); });
+
+  const cargos = [...new Set(todosEmpleados.map(e=>e.CARGO).filter(Boolean))].sort();
+  const sc = document.getElementById("filtro-cargo");
+  cargos.forEach(c => { const o=document.createElement("option"); o.value=o.textContent=c; sc.appendChild(o); });
+
+  // Badge de fecha
+  document.getElementById("fecha-badge").textContent = new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"long",year:"numeric"});
+
+  renderDashboard();
+}
+
+init();
+</script>
+</body>
+</html>
