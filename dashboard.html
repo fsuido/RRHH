@@ -444,11 +444,9 @@ main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 
 <!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="reporte_pdf.js"></script>
 <!-- AUTH + CONFIG primero -->
 <script src="clients.js"></script>
-<!-- Datos reales de competencias individuales + tips de mejora -->
-<script src="competencias_data.js"></script>
-<script src="reporte_pdf.js"></script>
 <script>
 /* ══════════════════════════════════════════
    CONFIG
@@ -948,28 +946,18 @@ async function init() {
    ══════════════════════════════════════════ */
 function enriquecerCompetencias(emp) {
   if (emp.COMPETENCIAS && emp.COMPETENCIAS.length > 0) return emp;
-
-  // 1) Preferir datos reales de la evaluación (competencias_data.js)
-  if (typeof getCompetenciasReales === "function") {
-    const reales = getCompetenciasReales(emp.CC);
-    if (reales) return { ...emp, COMPETENCIAS: reales };
-  }
-
-  // 2) Fallback: simular competencias (escala 1-4) si no hay datos reales para este CC
   const COMP_NAMES = [
-    "Orientación al Cliente","Trabajo en Equipo",
-    "Comunicación","Planeación y Organización"
+    "Orientacion al Logro","Orientacion al Cliente",
+    "Creatividad e Innovacion","Analisis y Sol. de Prob."
   ];
   const seed = (emp.CC||"0").charCodeAt(0);
   return {
     ...emp,
     COMPETENCIAS: COMP_NAMES.map((nombre,i)=>{
-      const base = ((emp.PUNTAJE_DESEMPENO+emp.PUNTAJE_POTENCIAL)/2)/100*4;
-      const jitter = Math.sin(seed*(i+1)*7.3)*0.6;
-      const puntaje = Math.min(4, Math.max(1, parseFloat((base+jitter).toFixed(2))));
-      const nivel = typeof nivelCompetencia === "function" ? nivelCompetencia(puntaje) : (puntaje>=3?"Fortaleza":"En desarrollo");
-      const tip = typeof tipCompetencia === "function" ? tipCompetencia(nombre, puntaje) : "Continuar reforzando esta competencia.";
-      return { nombre, puntaje, nivel, tip };
+      const base = ((emp.PUNTAJE_DESEMPENO+emp.PUNTAJE_POTENCIAL)/2)/100*5;
+      const jitter = Math.sin(seed*(i+1)*7.3)*0.8;
+      const puntaje = Math.min(5, Math.max(1, parseFloat((base+jitter).toFixed(2))));
+      return { nombre, puntaje, nivel: puntaje>=3.5?"Fortaleza":"Por desarrollar" };
     })
   };
 }

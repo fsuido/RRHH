@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Debug — 9Box</title>
+<style>
+body{font-family:'Courier New',monospace;background:#0b0d14;color:#dde1ef;padding:24px;font-size:13px;margin:0}
+h2{color:#7c6af7;margin-bottom:16px}
+.ok{color:#34d399}.err{color:#f87171}.warn{color:#fbbf24}.dim{color:#555d78}
+.card{background:#12151f;border:1px solid #1e2235;border-radius:10px;padding:16px;margin:12px 0}
+.card h3{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#555d78;margin-bottom:10px}
+pre{margin:0;white-space:pre-wrap;word-break:break-all;font-size:12px}
+button{background:#7c6af7;color:#fff;border:none;padding:8px 16px;border-radius:8px;
+       cursor:pointer;margin:4px;font-family:inherit;font-size:12px}
+button.green{background:#34d399;color:#000}
+button.red{background:#f87171;color:#000}
+button.orange{background:#fbbf24;color:#000}
+a{color:#7c6af7}
+</style>
+</head>
+<body>
+<h2>🔍 Debug — 9Box Sesión</h2>
+
+<div class="card">
+  <h3>Acciones rápidas</h3>
+  <button onclick="irLogin()" class="red">🗑 Limpiar todo + ir a Login</button>
+  <button onclick="irIndex()">→ Ir a Index</button>
+  <button onclick="irDash()">→ Ir a Dashboard</button>
+  <button onclick="location.reload()" class="orange">↺ Recargar</button>
+  <button onclick="simularLogin()" class="green">✅ Simular login (admin/demo)</button>
+</div>
+
+<div class="card">
+  <h3>localStorage — todas las claves</h3>
+  <pre id="ls-all"></pre>
+</div>
+
+<div class="card">
+  <h3>Sesión activa (9box_session_v2)</h3>
+  <pre id="session-v2"></pre>
+</div>
+
+<div class="card">
+  <h3>Sesión vieja (9box_session)</h3>
+  <pre id="session-old"></pre>
+</div>
+
+<div class="card">
+  <h3>Caché de empleados (sessionStorage)</h3>
+  <pre id="ss-empleados"></pre>
+</div>
+
+<div class="card">
+  <h3>Estado</h3>
+  <pre id="estado"></pre>
+</div>
+
+<script src="clients.js"></script>
+<script>
+function render() {
+  // localStorage completo
+  const lsAll = document.getElementById('ls-all');
+  try {
+    if (localStorage.length === 0) {
+      lsAll.innerHTML = '<span class="warn">(vacío)</span>';
+    } else {
+      lsAll.innerHTML = Object.keys(localStorage)
+        .map(k => `<span class="ok">${k}</span>: ${localStorage.getItem(k)?.slice(0,200)}`)
+        .join('\n');
+    }
+  } catch(e) { lsAll.innerHTML = `<span class="err">ERROR: ${e.message}</span>`; }
+
+  // Sesión v2
+  const sv2 = document.getElementById('session-v2');
+  try {
+    const raw = localStorage.getItem('9box_session_v2');
+    if (!raw) {
+      sv2.innerHTML = '<span class="err">❌ NO EXISTE — este es el problema</span>';
+    } else {
+      const s = JSON.parse(raw);
+      sv2.innerHTML = `<span class="ok">✅ EXISTE</span>\n` + JSON.stringify(s, null, 2);
+    }
+  } catch(e) { sv2.innerHTML = `<span class="err">ERROR parseando: ${e.message}</span>`; }
+
+  // Sesión vieja
+  const sold = document.getElementById('session-old');
+  try {
+    const raw = localStorage.getItem('9box_session');
+    sold.innerHTML = raw
+      ? `<span class="warn">⚠ Clave VIEJA encontrada (migrar):</span>\n${raw.slice(0,300)}`
+      : '<span class="dim">(no existe — OK)</span>';
+  } catch(e) { sold.innerHTML = e.message; }
+
+  // sessionStorage empleados
+  const sse = document.getElementById('ss-empleados');
+  try {
+    const raw = sessionStorage.getItem('9box_empleados');
+    if (!raw) {
+      sse.innerHTML = '<span class="warn">No hay caché de empleados (se cargará desde API)</span>';
+    } else {
+      const arr = JSON.parse(raw);
+      sse.innerHTML = `<span class="ok">✅ ${arr.length} empleados en caché</span>\n` +
+        arr.slice(0,3).map(e => `  ${e.CC} - ${e.NOMBRE}`).join('\n') +
+        (arr.length > 3 ? `\n  ... y ${arr.length-3} más` : '');
+    }
+  } catch(e) { sse.innerHTML = e.message; }
+
+  // Estado general
+  const estado = document.getElementById('estado');
+  const session = getSession();
+  if (session) {
+    estado.innerHTML = `<span class="ok">✅ Sesión válida</span>
+Usuario:  ${session.username}
+Nombre:   ${session.nombre}
+Empresa:  ${session.empresa}
+API URL:  ${session.apiUrl}
+Medición: ${session.medicion}
+Color:    ${session.color}
+Login at: ${new Date(session.loginAt).toLocaleString()}`;
+  } else {
+    estado.innerHTML = `<span class="err">❌ SIN SESIÓN VÁLIDA</span>
+→ Haz clic en "Simular login" o ve al Login`;
+  }
+}
+
+function irLogin()  { localStorage.clear(); sessionStorage.clear(); location.href='login.html'; }
+function irIndex()  { location.href='index.html'; }
+function irDash()   { location.href='dashboard.html'; }
+
+function simularLogin() {
+  // Simula exactamente lo que haría el login con admin/admin123 del cliente demo
+  const session = {
+    username:  "admin",
+    nombre:    "Administrador",
+    rol:       "admin",
+    clientId:  "demo",
+    empresa:   "Empresa Demo S.A.S",
+    logo:      "",
+    color:     "#7c6af7",
+    apiUrl:    "http://localhost:3000/api/9box",
+    medicion:  "demo1",
+    loginAt:   Date.now()
+  };
+  saveSession(session);
+  alert("✅ Sesión de demo guardada. Ahora ve al Dashboard o Index.");
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
