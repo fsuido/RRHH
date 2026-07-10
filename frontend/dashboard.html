@@ -169,8 +169,8 @@ main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 
 .comp-list { display: flex; flex-direction: column; gap: 10px; }
 .comp-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
-.comp-name { font-size: 0.65rem; color: var(--text); }
-.comp-val  { font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+.comp-name { font-size: 0.76rem; font-weight: 700; color: #ffffff; }
+.comp-val  { font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; color: #ffffff; font-weight: 600; }
 .comp-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
 .comp-fill  { height: 100%; border-radius: 4px; transition: width 0.9s ease; }
 
@@ -383,6 +383,13 @@ main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
   <div class="section-label">Análisis por área</div>
   <div class="row-2" id="row-charts"></div>
 
+  <div class="section-label">Distribución de competencias — Campana de Gauss (escala 1-4)</div>
+  <div class="card fadein" id="card-gauss">
+    <div class="card-title"><div class="dot-accent" style="background:#7c6af7"></div>Distribución normal de competencias individuales</div>
+    <div class="chart-wrap" style="height:210px"><canvas id="chart-gauss"></canvas></div>
+    <div id="gauss-stats" style="font-size:0.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center"></div>
+  </div>
+
   <div class="section-label">Reportes PDF</div>
   <div class="pdf-actions-card">
     <div class="pdf-actions-header">
@@ -527,6 +534,7 @@ const COMP_COLORS = [
 let todosEmpleados = [];
 let chartPromedios  = null;
 let chartDistrib    = null;
+let chartGauss      = null;
 let currentSession  = null;
 
 /* ══════════════════════════════════════════
@@ -560,6 +568,7 @@ function renderDashboard() {
   renderKPIs(list);
   renderNineBox(list);
   renderCharts(list);
+  renderGauss(list);
   actualizarContadorPDF();
 }
 
@@ -586,9 +595,9 @@ function renderKPIs(list) {
   }).join("") || `<span style="font-size:0.62rem;color:var(--muted)">Sin datos</span>`;
 
   const desBars = [
-    { label:"Alto (≥67)",    count: list.filter(e=>e.PUNTAJE_DESEMPENO>=67).length,                               color:"#34d399" },
-    { label:"Medio (34–66)", count: list.filter(e=>e.PUNTAJE_DESEMPENO>=34&&e.PUNTAJE_DESEMPENO<67).length,      color:"#fbbf24" },
-    { label:"Bajo (<34)",    count: list.filter(e=>e.PUNTAJE_DESEMPENO<34).length,                                color:"#f87171" },
+    { label:"Alto (≥2.7)",     count: list.filter(e=>e.PUNTAJE_DESEMPENO>=67).length,                               color:"#34d399" },
+    { label:"Medio (1.4–2.6)", count: list.filter(e=>e.PUNTAJE_DESEMPENO>=34&&e.PUNTAJE_DESEMPENO<67).length,      color:"#fbbf24" },
+    { label:"Bajo (<1.4)",     count: list.filter(e=>e.PUNTAJE_DESEMPENO<34).length,                                color:"#f87171" },
   ].map(b => {
     const pct = totalEval ? (b.count/totalEval*100) : 0;
     return `<div class="kpi-bar-row">
@@ -599,9 +608,9 @@ function renderKPIs(list) {
   }).join("");
 
   const potBars = [
-    { label:"Alto (≥67)",    count: list.filter(e=>e.PUNTAJE_POTENCIAL>=67).length,                              color:"#34d399" },
-    { label:"Medio (34–66)", count: list.filter(e=>e.PUNTAJE_POTENCIAL>=34&&e.PUNTAJE_POTENCIAL<67).length,     color:"#fbbf24" },
-    { label:"Bajo (<34)",    count: list.filter(e=>e.PUNTAJE_POTENCIAL<34).length,                               color:"#f87171" },
+    { label:"Alto (≥2.7)",     count: list.filter(e=>e.PUNTAJE_POTENCIAL>=67).length,                              color:"#34d399" },
+    { label:"Medio (1.4–2.6)", count: list.filter(e=>e.PUNTAJE_POTENCIAL>=34&&e.PUNTAJE_POTENCIAL<67).length,     color:"#fbbf24" },
+    { label:"Bajo (<1.4)",     count: list.filter(e=>e.PUNTAJE_POTENCIAL<34).length,                               color:"#f87171" },
   ].map(b => {
     const pct = totalEval ? (b.count/totalEval*100) : 0;
     return `<div class="kpi-bar-row">
@@ -619,15 +628,15 @@ function renderKPIs(list) {
       <div class="kpi-bars">${areaBarRows}</div>
     </div>
     <div class="card fadein" style="animation-delay:0.05s">
-      <div class="card-title"><div class="dot-accent" style="background:#34d399"></div>Desempeño promedio</div>
-      <div class="kpi-value" style="color:${barColor(avgDes)}">${avgDes.toFixed(1)}<span style="font-size:1rem;color:var(--muted)">%</span></div>
-      <div class="kpi-sub">promedio general</div>
+      <div class="card-title"><div class="dot-accent" style="background:#34d399"></div>Desempeño/Competencias promedio</div>
+      <div class="kpi-value" style="color:${barColor(avgDes)}">${(avgDes/25).toFixed(2)}<span style="font-size:1rem;color:var(--muted)">/4</span></div>
+      <div class="kpi-sub">promedio general · escala 1-4</div>
       <div class="kpi-bars">${desBars}</div>
     </div>
     <div class="card fadein" style="animation-delay:0.1s">
       <div class="card-title"><div class="dot-accent" style="background:#7c6af7"></div>Potencial promedio</div>
-      <div class="kpi-value" style="color:${barColor(avgPot)}">${avgPot.toFixed(1)}<span style="font-size:1rem;color:var(--muted)">%</span></div>
-      <div class="kpi-sub">promedio general</div>
+      <div class="kpi-value" style="color:${barColor(avgPot)}">${(avgPot/25).toFixed(2)}<span style="font-size:1rem;color:var(--muted)">/4</span></div>
+      <div class="kpi-sub">promedio general · escala 1-4</div>
       <div class="kpi-bars">${potBars}</div>
     </div>
   `;
@@ -752,6 +761,92 @@ function renderCharts(list) {
       }
     }
   });
+}
+
+/* ══════════════════════════════════════════
+   CAMPANA DE GAUSS — Distribución de competencias
+   Escala 1 a 4 (usa las puntuaciones reales de
+   competencias individuales, competencias_data.js)
+   ══════════════════════════════════════════ */
+function normalPDF(x, media, sd) {
+  if (!sd) return 0;
+  return (1/(sd*Math.sqrt(2*Math.PI))) * Math.exp(-0.5*Math.pow((x-media)/sd, 2));
+}
+
+function renderGauss(list) {
+  const canvas = document.getElementById("chart-gauss");
+  const statsEl = document.getElementById("gauss-stats");
+  if (!canvas) return;
+
+  // Recolectar todas las puntuaciones reales de competencias de los empleados filtrados
+  let scores = [];
+  if (typeof getCompetenciasReales === "function") {
+    list.forEach(e => {
+      const comps = getCompetenciasReales(e.CC);
+      if (comps) comps.forEach(c => scores.push(c.puntaje));
+    });
+  }
+
+  if (chartGauss) { chartGauss.destroy(); chartGauss = null; }
+
+  if (scores.length < 2) {
+    statsEl.textContent = "No hay suficientes datos de competencias para generar la distribución.";
+    return;
+  }
+
+  const n     = scores.length;
+  const media = scores.reduce((a,b)=>a+b,0) / n;
+  const varianza = scores.reduce((a,b)=>a+Math.pow(b-media,2),0) / n;
+  const sd    = Math.sqrt(varianza) || 0.05;
+
+  const xs = [], ys = [];
+  for (let x = 1; x <= 4.0001; x += 0.05) {
+    const xr = parseFloat(x.toFixed(2));
+    xs.push(xr);
+    ys.push(normalPDF(xr, media, sd));
+  }
+
+  Chart.defaults.font  = { family:"'JetBrains Mono', monospace", size:10 };
+  Chart.defaults.color = "#555d78";
+
+  chartGauss = new Chart(canvas, {
+    type:"line",
+    data:{
+      labels: xs,
+      datasets:[{
+        label: "Densidad de probabilidad",
+        data: ys,
+        borderColor: "#7c6af7",
+        backgroundColor: "rgba(124,106,247,0.18)",
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.35
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{
+          title: items => `Puntaje: ${items[0].label}`,
+          label: ctx => `Densidad: ${ctx.parsed.y.toFixed(3)}`
+        }}
+      },
+      scales:{
+        x:{
+          title:{ display:true, text:"Puntaje de competencia (escala 1-4)", color:"#6b7280" },
+          grid:{ color:"rgba(255,255,255,0.04)" },
+          ticks:{ color:"#6b7280", maxTicksLimit:7, callback: v => xs[v] }
+        },
+        y:{ display:false, grid:{ display:false } }
+      }
+    }
+  });
+
+  statsEl.innerHTML = `Media: <strong style="color:#fff">${media.toFixed(2)}</strong> ·
+    Desviación estándar: <strong style="color:#fff">${sd.toFixed(2)}</strong> ·
+    N = ${n} evaluaciones de competencia (${list.length} empleados)`;
 }
 
 /* ══════════════════════════════════════════

@@ -84,8 +84,10 @@ header {
 .btn-logout svg { width: 13px; height: 13px; flex-shrink: 0; }
 
 .stats-bar { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; flex-shrink: 0; }
-.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; overflow: hidden; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; overflow: hidden; cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.1s; }
 .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--color, var(--muted)); opacity: 0.7; }
+.stat-card:hover { border-color: var(--color, var(--accent)); transform: translateY(-1px); }
+.stat-card.activo { background: color-mix(in srgb, var(--color, var(--accent)) 14%, var(--surface)); border-color: var(--color, var(--accent)); box-shadow: 0 0 0 1px var(--color, var(--accent)) inset; }
 .stat-num { font-size: 1.1rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--color, #fff); line-height: 1; }
 .stat-lbl { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; line-height: 1.2; }
 
@@ -264,7 +266,7 @@ header {
   <div class="grid-container">
     <div class="grid-with-axes">
       <div class="axis-y-label"><span>Potencial</span></div>
-      <div class="canvas-wrap" id="canvas-wrap" onclick="if(event.target===this||event.target.id==='grid-svg'){if(tooltipFijo){tooltipFijo=false;tooltipEl._cc=null;hideTooltip();activeCC=null;refreshHL();}if(stackFijo){stackFijo=false;activeStackKey=null;hideStack();refreshHL();}}">
+      <div class="canvas-wrap" id="canvas-wrap" onclick="if(event.target===this||event.target.id==='grid-svg'){if(tooltipFijo){tooltipFijo=false;tooltipEl._cc=null;hideTooltip();activeCC=null;refreshHL();}if(stackFijo){stackFijo=false;activeStackKey=null;hideStack();refreshHL();}if(activeQuadrant){activeQuadrant=null;refreshHL();}}">
         <svg id="grid-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
       <div class="axis-x-ticks">
@@ -384,6 +386,7 @@ let empleadosFiltrados = [];
 let colorMap           = {};
 let activeCC           = null;
 let activeStackKey     = null;
+let activeQuadrant     = null;
 
 const tooltipEl      = document.getElementById("tooltip");
 const stackPopoverEl = document.getElementById("stack-popover");
@@ -439,10 +442,16 @@ function buildStats(list) {
     const count = list.filter(e => clasificar(e.PUNTAJE_DESEMPENO, e.PUNTAJE_POTENCIAL).nombre === qm.nombre).length;
     const card = document.createElement("div");
     card.className = "stat-card";
+    card.dataset.quad = qm.nombre;
     card.style.setProperty("--color", qm.color);
     card.innerHTML = `<div class="stat-num">${count}</div><div class="stat-lbl">${qm.nombre}</div>`;
+    card.addEventListener("click", e => { e.stopPropagation(); toggleQuadrant(qm.nombre); });
     bar.appendChild(card);
   });
+  if (activeQuadrant) {
+    const match = [...bar.children].find(c => c.dataset.quad === activeQuadrant);
+    if (match) match.classList.add("activo"); else activeQuadrant = null;
+  }
 }
 
 function buildNames(list) {
@@ -529,10 +538,10 @@ function buildGrid(list, selectedCCs) {
   bgHit.setAttribute("fill","transparent");
   bgHit.addEventListener("click", e => {
     e.stopPropagation();
-    const hadSelection = tooltipFijo || stackFijo || activeCC || activeStackKey;
+    const hadSelection = tooltipFijo || stackFijo || activeCC || activeStackKey || activeQuadrant;
     tooltipFijo=false; tooltipEl._cc=null; hideTooltip();
     stackFijo=false; activeStackKey=null; hideStack();
-    activeCC=null;
+    activeCC=null; activeQuadrant=null;
     if (hadSelection) refreshHL();
   });
   svg.appendChild(bgHit);
@@ -581,7 +590,7 @@ function buildGrid(list, selectedCCs) {
     const cx = toX(group[0].PUNTAJE_DESEMPENO);
     const cy = toY(group[0].PUNTAJE_POTENCIAL);
     const individualSelected = selectedCCs && selectedCCs.size === 1 && !activeStackKey;
-    const activeInGroup = group.find(e => e.CC === activeCC);
+    const activeInGroup = group.find(e => selectedCCs && selectedCCs.has(e.CC));
     const isActive = activeStackKey===key || !!activeInGroup;
     if (individualSelected && activeInGroup) {
       drawSingle(svg,ns,cx,cy,R,activeInGroup,colorMap[activeInGroup.CC],true,false);
@@ -725,7 +734,7 @@ function showTooltip(e,emp,color) { fillTooltip(emp,color); posEl(tooltipEl,e,21
 function hideTooltip() { tooltipEl.classList.remove("visible"); }
 function toggleTooltip(e,emp,color,dotCX,dotCY,dotR) {
   if (tooltipFijo && tooltipEl._cc===emp.CC) { tooltipFijo=false; tooltipEl._cc=null; hideTooltip(); activeCC=null; refreshHL(); return; }
-  tooltipFijo=true; tooltipEl._cc=emp.CC; activeCC=emp.CC; activeStackKey=null;
+  tooltipFijo=true; tooltipEl._cc=emp.CC; activeCC=emp.CC; activeStackKey=null; activeQuadrant=null;
   fillTooltip(emp,color);
   const svgRect=document.getElementById("grid-svg").getBoundingClientRect();
   const svgW=parseFloat(document.getElementById("grid-svg").getAttribute("viewBox").split(" ")[2]);
@@ -749,7 +758,7 @@ function fillTooltip(emp,color) {
 function hideStack() { stackPopoverEl.classList.remove("visible"); }
 function toggleStack(e,group,key,dotCX,dotCY,dotR) {
   if(stackFijo&&activeStackKey===key) { stackFijo=false; activeStackKey=null; hideStack(); refreshHL(); return; }
-  stackFijo=true; activeStackKey=key; activeCC=null;
+  stackFijo=true; activeStackKey=key; activeCC=null; activeQuadrant=null;
   tooltipFijo=false; hideTooltip();
   fillStack(group,key,dotCX,dotCY,dotR);
   const svgRect=document.getElementById("grid-svg").getBoundingClientRect();
@@ -774,7 +783,7 @@ function fillStack(group,key,dotCX,dotCY,dotR) {
     item.appendChild(av); item.appendChild(info);
     item.addEventListener("click",e2=>{
       e2.stopPropagation();
-      stackFijo=false; hideStack(); activeStackKey=null;
+      stackFijo=false; hideStack(); activeStackKey=null; activeQuadrant=null;
       activeCC=emp.CC; tooltipFijo=true; tooltipEl._cc=emp.CC;
       fillTooltip(emp,color);
       if (dotCX !== undefined) {
@@ -795,13 +804,22 @@ function fillStack(group,key,dotCX,dotCY,dotR) {
 document.addEventListener("click",()=>{
   if(tooltipFijo){ tooltipFijo=false; tooltipEl._cc=null; hideTooltip(); activeCC=null; refreshHL(); }
   if(stackFijo){ stackFijo=false; activeStackKey=null; hideStack(); refreshHL(); }
+  if(activeQuadrant){ activeQuadrant=null; refreshHL(); }
 });
 
 function handleNameClick(emp, evt) {
   if (evt) evt.stopPropagation();
   stackFijo=false; activeStackKey=null; hideStack();
   tooltipFijo=false; hideTooltip();
+  activeQuadrant=null;
   if (activeCC===emp.CC) { activeCC=null; } else { activeCC=emp.CC; }
+  refreshHL();
+}
+
+function toggleQuadrant(nombre) {
+  stackFijo=false; activeStackKey=null; hideStack();
+  tooltipFijo=false; activeCC=null; tooltipEl._cc=null; hideTooltip();
+  activeQuadrant = (activeQuadrant === nombre) ? null : nombre;
   refreshHL();
 }
 
@@ -811,11 +829,18 @@ function refreshHL() {
   if (activeStackKey) {
     empleadosFiltrados.filter(e=>scoreKey(e)===activeStackKey).forEach(e=>selectedCCs.add(e.CC));
   }
+  if (activeQuadrant) {
+    empleadosFiltrados.filter(e=>clasificar(e.PUNTAJE_DESEMPENO,e.PUNTAJE_POTENCIAL).nombre===activeQuadrant).forEach(e=>selectedCCs.add(e.CC));
+  }
   document.querySelectorAll(".name-item").forEach(el => {
     el.style.display = "";
     const cc = el.id.replace("ni-", "");
     if (selectedCCs.size === 0 || !selectedCCs.has(cc)) el.classList.remove("activo");
     else el.classList.add("activo");
+  });
+  document.querySelectorAll(".stat-card").forEach(el => {
+    if (activeQuadrant && el.dataset.quad === activeQuadrant) el.classList.add("activo");
+    else el.classList.remove("activo");
   });
   buildGrid(empleadosFiltrados, selectedCCs);
 }
@@ -824,6 +849,9 @@ function filtrar() {
   const area=document.getElementById("filtro-area").value;
   const cargo=document.getElementById("filtro-cargo").value;
   empleadosFiltrados=todosEmpleados.filter(e=>(!area||e.AREA===area)&&(!cargo||e.CARGO===cargo));
+  activeCC=null; activeStackKey=null; activeQuadrant=null;
+  tooltipFijo=false; tooltipEl._cc=null; hideTooltip();
+  stackFijo=false; hideStack();
   buildStats(empleadosFiltrados); buildNames(empleadosFiltrados); buildGrid(empleadosFiltrados);
 }
 function poblarFiltros(list) {
