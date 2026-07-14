@@ -14,7 +14,7 @@ const CLIENTS = [
   /* ─── CLIENTE DEMO ─── */
   {
     id:       "demo",
-    nombre:   "Empresa Demo S.A.S",
+    nombre:   "Comestibles",
     logo:     "",
     color:    "#7c6af7",
     apiUrl:   "http://localhost:3000/api/9box",
@@ -22,7 +22,8 @@ const CLIENTS = [
 
     usuarios: [
       { username: "admin",  password: "admin123", nombre: "Administrador", rol: "admin"  },
-      { username: "viewer", password: "ver123",   nombre: "Usuario Visor", rol: "viewer" }
+      { username: "viewer", password: "ver123",   nombre: "Usuario Visor", rol: "viewer" },
+      { username: "comestibles", password: "comestibles",   nombre: "Comestibles", rol: "admin" }
     ]
   },
 
