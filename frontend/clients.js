@@ -23,7 +23,7 @@ const CLIENTS = [
     usuarios: [
       { username: "admin",  password: "admin123", nombre: "Administrador", rol: "admin"  },
       { username: "viewer", password: "ver123",   nombre: "Usuario Visor", rol: "viewer" },
-      { username: "admin", password: "comestibles",   nombre: "comestibles", rol: "admin" }
+      { username: "comestibles", password: "comestibles",   nombre: "comestibles", rol: "admin" }
 
     ]
   },
