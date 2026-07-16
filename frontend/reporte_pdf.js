@@ -81,8 +81,6 @@ const ReportePDF = (() => {
     return "Plan formativo y seguimiento cercano.";
   }
 
-
-  
   function interpretacion(emp) {
     const des = emp.PUNTAJE_DESEMPENO, pot = emp.PUNTAJE_POTENCIAL;
     const nd = des>=67?"alto":des>=34?"medio":"bajo";
@@ -174,6 +172,20 @@ const ReportePDF = (() => {
       lines[maxLines-1] = last + "...";
     }
     return { lines, fontSize: size };
+  }
+
+  function wrapLimited(doc, text, maxW, fontSize, maxLines, font="helvetica") {
+    let lines = wrapText(doc, text, maxW, fontSize, font);
+    if (lines.length > maxLines) {
+      lines = lines.slice(0, maxLines);
+      let last = lines[maxLines-1];
+      doc.setFont(font,"normal"); doc.setFontSize(fontSize);
+      while (doc.getTextWidth(last + "...") > maxW && last.length > 3) {
+        last = last.slice(0, -1);
+      }
+      lines[maxLines-1] = last + "...";
+    }
+    return lines;
   }
 
   /* ── MINI 9-BOX ── */
@@ -360,20 +372,34 @@ const ReportePDF = (() => {
     textCol(doc,C.green);
     doc.text("FORTALEZAS", PX+3, ly);
     ly+=4;
-    doc.setFont("helvetica","normal"); doc.setFontSize(6.5);
+    const colWL = LW/2 - 6;
+    doc.setFont("helvetica","normal"); doc.setFontSize(5.6);
     textCol(doc,C.text);
-    forts.slice(0,3).forEach(f=>{ doc.text(`• ${f.nombre}`, PX+4, ly); ly+=3.8; });
+    if (!forts.length) {
+      textCol(doc,C.muted);
+      doc.text("Ninguna aún", PX+4, ly);
+    }
+    forts.slice(0,3).forEach(f=>{
+      const lines = wrapLimited(doc, `• ${f.nombre}`, colWL, 5.6, 2);
+      doc.setFont("helvetica","normal"); doc.setFontSize(5.6); textCol(doc,C.text);
+      lines.forEach(ln=>{ doc.text(ln, PX+4, ly); ly+=2.7; });
+      ly += 0.5;
+    });
 
     // Áreas desarrollo
     let ly2=curY+28;
-    const col2x = PX+LW/2;
+    const col2x = PX+LW/2+2;
+    const colWR = LW/2 - 6;
     doc.setFont("helvetica","bold"); doc.setFontSize(6);
     textCol(doc,C.yellow);
-    doc.text("AREAS DESARROLLO", col2x, ly2);
+    doc.text("AREAS DESARROLLO", col2x, ly2, {maxWidth: colWR+4});
     ly2+=4;
-    doc.setFont("helvetica","normal"); doc.setFontSize(6.5);
-    textCol(doc,C.text);
-    devs.slice(0,3).forEach(d=>{ doc.text(`• ${d.nombre}`, col2x+1, ly2); ly2+=3.8; });
+    devs.slice(0,3).forEach(d=>{
+      const lines = wrapLimited(doc, `• ${d.nombre}`, colWR, 5.6, 2);
+      doc.setFont("helvetica","normal"); doc.setFontSize(5.6); textCol(doc,C.text);
+      lines.forEach(ln=>{ doc.text(ln, col2x+1, ly2); ly2+=2.7; });
+      ly2 += 0.5;
+    });
 
     // Recomendacion corta
     let ly3=curY+BODY_H-12;
@@ -593,7 +619,7 @@ const ReportePDF = (() => {
     roundRect(doc, PX,curY,halfW,boxH,2, [35,18,18], [120,40,40], 0.5);
     doc.setFont("helvetica","bold"); doc.setFontSize(7);
     textCol(doc,C.red);
-    doc.text("⚠ PRIORIDADES DE DESARROLLO", PX+3, curY+6);
+    doc.text("• PRIORIDADES DE DESARROLLO", PX+3, curY+6);
     let py = curY+11;
     if (prioritarias.length === 0) {
       doc.setFont("helvetica","normal"); doc.setFontSize(6.5); textCol(doc,C.muted);
@@ -614,7 +640,7 @@ const ReportePDF = (() => {
     roundRect(doc, rx,curY,halfW,boxH,2, [18,30,24], [40,110,80], 0.5);
     doc.setFont("helvetica","bold"); doc.setFontSize(7);
     textCol(doc,C.green);
-    doc.text("★ FORTALEZAS A POTENCIAR", rx+3, curY+6);
+    doc.text("• FORTALEZAS A POTENCIAR", rx+3, curY+6);
     let fy = curY+11;
     fuertes.forEach((c,i)=>{
       doc.setFont("helvetica","bold"); doc.setFontSize(6.8); textCol(doc,C.white);
@@ -657,6 +683,118 @@ const ReportePDF = (() => {
   }
 
   /* ══════════════════════════════════════════════════════
+     PÁGINA(S) — RETROALIMENTACIÓN 360
+     Se agrega solo si el empleado tiene feedback registrado.
+     Soporta 1 o varios evaluadores y salto automático de página
+     si el contenido no cabe en una sola hoja.
+     ══════════════════════════════════════════════════════ */
+  function dibujarPaginaFeedback(doc, emp, empresa, medicion) {
+    const W=210, H=297;
+    const PX=12;
+    const feedbacks = emp.FEEDBACK || [];
+    if (!feedbacks.length) return;
+
+    const HH = 26;
+    const MAXY = H - 16; // deja espacio para el footer
+
+    function pintarHeader(continuacion) {
+      rect(doc, 0,0,W,H, C.bg, null);
+      rect(doc, 0,0,W,HH, C.surface, null);
+      doc.setDrawColor(...C.border); doc.setLineWidth(0.4);
+      doc.line(0,HH,W,HH);
+      doc.setFont("helvetica","bold"); doc.setFontSize(11);
+      textCol(doc,C.white);
+      doc.text(continuacion ? "RETROALIMENTACIÓN 360 (cont.)" : "RETROALIMENTACIÓN 360", PX, HH/2-1);
+      doc.setFont("helvetica","normal"); doc.setFontSize(7);
+      textCol(doc,C.muted);
+      doc.text(`${(emp.NOMBRE||"").toUpperCase()} · ${emp.CARGO||"—"} · CC ${emp.CC||"—"}`, PX, HH/2+6);
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.5);
+      textCol(doc,C.accent);
+      doc.text(`${feedbacks.length} EVALUADOR${feedbacks.length>1?"ES":""}`, W-PX, 10, {align:"right"});
+      doc.setFont("helvetica","normal"); textCol(doc,C.muted);
+      doc.text(hoy(), W-PX, 15, {align:"right"});
+      return HH+8;
+    }
+
+    function pintarFooter() {
+      const FY=H-8;
+      rect(doc, 0,FY,W,8, C.surface, null);
+      doc.setDrawColor(...C.border); doc.setLineWidth(0.4);
+      doc.line(0,FY,W,FY);
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.5);
+      textCol(doc,C.muted);
+      doc.text("TALENT · Retroalimentación 360", PX, FY+5);
+      doc.setFont("helvetica","normal");
+      doc.text(`Generado el ${hoy()} · Uso interno y confidencial`, W-PX, FY+5, {align:"right"});
+      doc.text(empresa, W/2, FY+5, {align:"center"});
+    }
+
+    let curY = pintarHeader(false);
+    const showEvaluador = true;
+
+    /* Divide un texto en párrafos por salto de línea (los evaluadores suelen
+       escribir listas con "- " o líneas separadas). Cada línea no vacía se
+       envuelve por separado para conservar la estructura original. */
+    function parrafos(texto, maxW, size) {
+      const partes = (texto || "No registrado.").split(/\n+/).map(s=>s.trim()).filter(Boolean);
+      const out = [];
+      (partes.length ? partes : ["No registrado."]).forEach(p => {
+        wrapText(doc, p, maxW, size).forEach(l => out.push(l));
+      });
+      return out;
+    }
+
+    feedbacks.forEach((fb, idx) => {
+      const maxW = W-2*PX-6;
+      doc.setFont("helvetica","normal"); doc.setFontSize(7);
+      const aspLines = parrafos(fb.aspectos, maxW, 7);
+      const recLines = parrafos(fb.recomendaciones, maxW, 7);
+      const headerH  = showEvaluador ? 6 : 0;
+      const blockH   = 10 + headerH + 5 + aspLines.length*3.6 + 6 + recLines.length*3.6 + 4;
+
+      if (curY + blockH > MAXY) {
+        pintarFooter();
+        curY = pintarHeader(true);
+      }
+
+      roundRect(doc, PX,curY,W-2*PX,blockH,2, C.surface, C.border, 0.3);
+      let iy = curY+6;
+      if (showEvaluador) {
+        doc.setFont("helvetica","bold"); doc.setFontSize(7);
+        textCol(doc,C.accent);
+        const etiqueta = feedbacks.length > 1 ? `EVALUADOR ${idx+1} · ${fb.evaluador || "No especificado"}` : `EVALUADOR · ${fb.evaluador || "No especificado"}`;
+        doc.text(etiqueta, PX+3, iy);
+        iy += 6;
+      }
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.5);
+      textCol(doc,C.green);
+      doc.text("• ASPECTOS A RESALTAR", PX+3, iy);
+      iy += 4.4;
+      doc.setFont("helvetica","normal"); doc.setFontSize(7);
+      textCol(doc,C.text);
+      aspLines.forEach(ln => { doc.text(ln, PX+3, iy); iy += 3.6; });
+      iy += 3;
+      doc.setFont("helvetica","bold"); doc.setFontSize(6.5);
+      textCol(doc,C.yellow);
+      doc.text("• RECOMENDACIONES / OPORTUNIDADES DE MEJORA", PX+3, iy);
+      iy += 4.4;
+      doc.setFont("helvetica","normal"); doc.setFontSize(7);
+      textCol(doc,C.text);
+      recLines.forEach(ln => { doc.text(ln, PX+3, iy); iy += 3.6; });
+
+      curY += blockH + 5;
+    });
+
+    pintarFooter();
+  }
+
+  function feedbackDe(emp) {
+    if (emp.FEEDBACK && emp.FEEDBACK.length) return emp.FEEDBACK;
+    if (typeof getFeedbackReal === "function") return getFeedbackReal(emp.CC);
+    return null;
+  }
+
+  /* ══════════════════════════════════════════════════════
      API PÚBLICA
      ══════════════════════════════════════════════════════ */
 
@@ -676,6 +814,11 @@ const ReportePDF = (() => {
     dibujarPagina(doc, emp, empresa, medicion);
     doc.addPage();
     dibujarPaginaPlan(doc, emp, empresa, medicion);
+    const fb = feedbackDe(emp);
+    if (fb && fb.length) {
+      doc.addPage();
+      dibujarPaginaFeedback(doc, { ...emp, FEEDBACK: fb }, empresa, medicion);
+    }
     const fileName = `Reporte_${(emp.NOMBRE||"empleado").replace(/\s+/g,"_")}.pdf`;
     doc.save(fileName);
   }
@@ -704,6 +847,11 @@ const ReportePDF = (() => {
       dibujarPagina(doc, emp, empresa, medicion);
       doc.addPage();
       dibujarPaginaPlan(doc, emp, empresa, medicion);
+      const fb = feedbackDe(emp);
+      if (fb && fb.length) {
+        doc.addPage();
+        dibujarPaginaFeedback(doc, { ...emp, FEEDBACK: fb }, empresa, medicion);
+      }
       if (onProgress) onProgress(i+1, lista.length);
     });
 
@@ -725,6 +873,11 @@ const ReportePDF = (() => {
     dibujarPagina(doc, emp, empresa, medicion);
     doc.addPage();
     dibujarPaginaPlan(doc, emp, empresa, medicion);
+    const fb = feedbackDe(emp);
+    if (fb && fb.length) {
+      doc.addPage();
+      dibujarPaginaFeedback(doc, { ...emp, FEEDBACK: fb }, empresa, medicion);
+    }
     return doc.output("arraybuffer");
   }
 
