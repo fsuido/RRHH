@@ -305,13 +305,14 @@ const ReportePDF = (() => {
     textCol(doc,C.muted);
     doc.text(hoy(), W-PX, 15, {align:"right"});
 
-    /* ══ KPI CARDS ══ */
+    /* ══ KPI CARDS (2 tarjetas: Competencias y Potencial, escala 1-4) ══ */
     let curY = HH+4;
-    const KH=22, KW=(W-2*PX-8)/3, gap=4;
+    const KH=22, gap=6;
+    const KW2=(W-2*PX-gap)/2;
 
     // Card 1: Promedio Competencias
-    function kpiCard(x, label, valor, max, color, sufijo="/4") {
-      roundRect(doc, x,curY,KW,KH,2, C.surface, C.border, 0.3);
+    function kpiCard(x, w, label, valor, max, color, sufijo="/4") {
+      roundRect(doc, x,curY,w,KH,2, C.surface, C.border, 0.3);
       doc.setFont("helvetica","bold"); doc.setFontSize(5.5);
       textCol(doc,C.muted);
       doc.text(label, x+3, curY+5);
@@ -323,12 +324,12 @@ const ReportePDF = (() => {
       doc.setFont("helvetica","normal"); doc.setFontSize(7); textCol(doc,C.muted);
       doc.text(sufijo, x+3+valW+1.5, curY+14);
       // Barra
-      bar(doc, x+3, curY+16, KW-6, 2.5, (parseFloat(valor)/max), color);
+      bar(doc, x+3, curY+16, w-6, 2.5, (parseFloat(valor)/max), color);
     }
 
-    kpiCard(PX,          "PROMEDIO COMPETENCIAS", pc.toFixed(2), 4,  C.accent, "/4");
-    kpiCard(PX+KW+gap,   "PUNTAJE POTENCIAL",     pot,           100, nivelP,  "/100");
-    kpiCard(PX+KW*2+gap*2,"PUNTAJE DESEMPENO",    des,           100, nivelD,  "/100");
+    const potEscala4 = (pot/25).toFixed(2);
+    kpiCard(PX,        KW2, "PROMEDIO COMPETENCIAS", pc.toFixed(2),  4, C.accent, "/4");
+    kpiCard(PX+KW2+gap,KW2, "PUNTAJE POTENCIAL",     potEscala4,     4, nivelP,   "/4");
 
     /* ── Texto perfil ── */
     curY += KH+3;
@@ -446,10 +447,10 @@ const ReportePDF = (() => {
     bar(doc, rx+3, iy, RW-6, 3, pot/100, nivelP);
     doc.setFont("helvetica","bold"); doc.setFontSize(8);
     textCol(doc,C.white);
-    doc.text(`${pot}`, rx+4, iy+6);
-    const potW = doc.getTextWidth(`${pot}`);
+    doc.text(`${potEscala4}`, rx+4, iy+6);
+    const potW = doc.getTextWidth(`${potEscala4}`);
     doc.setFont("helvetica","normal"); doc.setFontSize(6); textCol(doc,C.muted);
-    doc.text("/100", rx+4+potW+1, iy+6);
+    doc.text("/4", rx+4+potW+1, iy+6);
 
     curY += BODY_H+4;
 
